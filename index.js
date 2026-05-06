@@ -1,41 +1,46 @@
-const { Client, GatewayIntentBits } = require("discord.js");
+const { Client, GatewayIntentBits, PermissionsBitField } = require("discord.js");
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildPresences
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
   ],
 });
 
 const TOKEN = process.env.TOKEN;
-const KEYWORD = "/despiseW";
-const ROLE_NAME = "pic perms";
 
 client.once("ready", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
-client.on("presenceUpdate", async (_, presence) => {
-  if (!presence || !presence.member) return;
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
 
-  const status = presence.activities?.find(a => a.type === 4);
-  if (!status || !status.state) return;
-
-  const member = presence.member;
-  const role = member.guild.roles.cache.find(r => r.name === ROLE_NAME);
-  if (!role) return;
-
-  const hasKeyword = status.state.includes(KEYWORD);
-
-  if (hasKeyword) {
-    if (!member.roles.cache.has(role.id)) {
-      await member.roles.add(role);
+  // LOCK
+  if (message.content === "!lock") {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+      return message.reply("You don't have permission.");
     }
-  } else {
-    if (member.roles.cache.has(role.id)) {
-      await member.roles.remove(role);
+
+    await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+      SendMessages: false,
+    });
+
+    message.channel.send("🔒 Channel locked.");
+  }
+
+  // UNLOCK
+  if (message.content === "!unlock") {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+      return message.reply("You don't have permission.");
     }
+
+    await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+      SendMessages: true,
+    });
+
+    message.channel.send("🔓 Channel unlocked.");
   }
 });
 
